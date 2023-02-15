@@ -3,24 +3,19 @@ from config import host, port, database, user, password
 
 
 def create_table() -> None:
-    """ Функция, которая сначала удаляет таблицу 'Candidates', если она уже есть, а затем создает новую. """
+    """ Функция, которая сначала удаляет таблицу 'Seen_candidates', если она уже есть, а затем создает новую. """
 
     try:
         with psycopg2.connect(host=host, port=port, database=database, user=user, password=password) as conn:
             with conn.cursor() as cursor:
 
                 # 1-ый этап: удаление таблицы, если она есть (чтобы для разных юзеров данные не перемешивались)
-                cursor.execute("""DROP TABLE IF EXISTS Candidates;""")
+                cursor.execute("""DROP TABLE IF EXISTS Seen_candidates;""")
                 conn.commit()
 
                 # 2-ой этап: создание таблицы
                 cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS Candidates (
-                        vk_id INTEGER PRIMARY KEY,
-                        first_name VARCHAR(40) NOT NULL,
-                        last_name VARCHAR(40) NOT NULL,
-                        vk_link VARCHAR(60) NOT NULL UNIQUE
-                    );
+                    CREATE TABLE IF NOT EXISTS Seen_candidates (vk_id INTEGER PRIMARY KEY);
                 """)
                 conn.commit()
 
@@ -32,16 +27,16 @@ def create_table() -> None:
             conn.close()
 
 
-def insert_candidates_info(info) -> None:
-    """ Функция, добавляющая в таблицу 'Candidates' всех(!!!) подошедших по заданным критериям кандидатов. """
+def insert_candidate_id(candidate_id) -> None:
+    """ Функция, добавляющая в таблицу 'Seen_candidates' id уже просмотренных кандидатов. """
 
     try:
         with psycopg2.connect(host=host, port=port, database=database, user=user, password=password) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO Candidates(vk_id, first_name, last_name, vk_link)
-                    VALUES(%s, %s, %s, %s);
-                """, (info[0], info[1], info[2], info[3]))
+                    INSERT INTO Seen_candidates(vk_id)
+                    VALUES(%s);
+                """, (candidate_id, ))
                 conn.commit()
 
     except Exception as error:
@@ -52,34 +47,20 @@ def insert_candidates_info(info) -> None:
             conn.close()
 
 
-def get_user_from_db() -> tuple:
-    """ Функция, выдающая по запросу пользователя данные об одном случайном кандидате из таблицы 'Candidates'. """
-
-    try:
-        with psycopg2.connect(host=host, port=port, database=database, user=user, password=password) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""SELECT * FROM Candidates""")
-                return cursor.fetchone()
-
-    except Exception as error:
-        print(f"Ошибка при работе с PostgreSQL: {error}")
-
-    finally:
-        if conn:
-            conn.close()
-
-
-def delete_candidate(vk_id) -> None:
-    """ Функция, которая удаляет просмотренных кандидатов из таблицы, чтобы они больше не выпадали при запросе. """
+def get_seen_users(candidate_id) -> bool:
+    """ Функция, проверяющая, выдавался ли по запросу уже данный кандидат. """
 
     try:
         with psycopg2.connect(host=host, port=port, database=database, user=user, password=password) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    DELETE FROM Candidates
-                    WHERE vk_id = %s;
-                """, (vk_id, ))
-                conn.commit()
+                    SELECT vk_id FROM Seen_candidates
+                    WHERE vk_id = %s;                
+                """, (candidate_id, ))
+                if cursor.fetchone():
+                    return True
+                else:
+                    return False
 
     except Exception as error:
         print(f"Ошибка при работе с PostgreSQL: {error}")
@@ -90,7 +71,9 @@ def delete_candidate(vk_id) -> None:
 
 
 def create_table_user() -> None:
-    """ Функция, которая создает таблицу 'Users', если её нет. """
+    """
+    Функция, которая создает таблицу 'Users', если её нет.
+    Таблица одна для всех пользователей. Будет хранить id всех юзеров, которые воспользовались услугами бота. """
 
     try:
         with psycopg2.connect(host=host, port=port, database=database, user=user, password=password) as conn:
