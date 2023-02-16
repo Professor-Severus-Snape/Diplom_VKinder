@@ -346,7 +346,7 @@ def search_candidates(user_id: int, token: str = access_token, version: str = ap
             candidate = response['response']['items'][0]  # словарь с информацией о кандидате
 
             if not candidate['is_closed'] or candidate['is_closed'] and candidate['can_access_closed']:
-                if not get_seen_users(candidate['id']):
+                if not select_users_seen_candidates(user_id=user_id, candidate_id=candidate['id']):
                     # print(candidate['id'])
                     return candidate['id']
 

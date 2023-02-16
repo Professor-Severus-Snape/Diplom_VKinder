@@ -8,6 +8,8 @@ def main() -> None:
     При получении нового сообщения обрабатывает полученные данные, выдает и записывает результат в БД PostgreSQL.
     Ничего не возвращает.
     """
+    create_tables()  # создаем все таблицы для работы с БД (если их ещё нет)
+
     server, key, ts = call_server()
 
     while True:
@@ -39,7 +41,6 @@ def main() -> None:
                         text = element[5]  # получаем текст сообщения юзера
 
                         if text.lower() == 'начать':
-                            create_table()  # создаем таблицу куда будем кидать уже просмотренных кандидатов
 
                             send_message(user_id=user_id,
                                          message=f"Рад Вас приветствовать, {get_person_info(person_id=user_id)[0]}!\n\n"
@@ -60,7 +61,10 @@ def main() -> None:
                                 send_photo(user_id=user_id, candidate_id=vk_id,
                                            photo_id=get_candidate_photo_id(vk_id)[index])
 
-                            insert_candidate_id(candidate_id=vk_id)
+                            if not select_users(user_id):
+                                insert_users(user_id=user_id)
+
+                            insert_users_seen_candidates(user_id=user_id, candidate_id=vk_id)
 
                             send_message(user_id=user_id,
                                          message=f"Желаете продолжить? Тогда смело вводите 'да'.\n\n"
@@ -71,12 +75,8 @@ def main() -> None:
                                                                   f"Если захотите повторить - введите 'начать'!")
 
                         else:
-                            # работа с БД, чтобы бот не реагировал на сообщения, запрашивающие у юзера доп. инфу:
-                            create_table_user()  # таблица создастся только в случае если её не было - общая для всех!!!
-                            if get_select_users(user_id=user_id):  # если юзер не понял с 1 раза - это его проблемы!
-                                pass
-                            else:  # отправляем подсказку для нового юзера в самом начале беседы с ботом
-                                insert_users(user_id=user_id)
+                            # работа с БД, чтобы бот не реагировал на сообщения, запрашивающие у юзера доп. инфу
+                            if not select_users(user_id=user_id):  # отправляем подсказку для нового юзера только 1 раз!
                                 send_message(user_id=user_id,
                                              message=f"Введите \'начать\', чтобы я смог начать поиск партнера.")
 
