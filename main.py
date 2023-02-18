@@ -8,9 +8,14 @@ def main() -> None:
     При получении нового сообщения обрабатывает полученные данные, выдает и записывает результат в БД PostgreSQL.
     Ничего не возвращает.
     """
-    create_tables()  # создаем все таблицы для работы с БД (если их ещё нет)
 
-    server, key, ts = call_server()
+    try:
+        server, key, ts = call_server()
+
+    except Exception:
+        return print("Проблемы с токеном. Проверьте актуальность токена сообщества.")
+
+    create_tables()  # создаем все таблицы для работы с БД (если их ещё нет)
 
     while True:
         resp: dict = requests.get(f'https://{server}?act=a_check&key={key}&ts={ts}&wait=90&mode=2&version=2').json()
@@ -40,45 +45,51 @@ def main() -> None:
                         user_id = abs(element[3])  # получаем id написавшего юзера
                         text = element[5]  # получаем текст сообщения юзера
 
-                        if text.lower() == 'начать':
+                        try:
 
-                            send_message(user_id=user_id,
-                                         message=f"Рад Вас приветствовать, {get_person_info(person_id=user_id)[0]}!\n\n"
-                                                 f"Я чат-бот VKinder и сейчас я постараюсь подобрать Вам пару.\n\n"
-                                                 f"К сожалению, я только учусь, поэтому мне очень важно, "
-                                                 f"чтобы Вы правильно отвечали на мои вопросы.\n\n"
-                                                 f"Введите 'да', если Вы готовы насладиться первым кандидатом.")
+                            if text.lower() == 'начать':
 
-                        elif text.lower() == 'да':
-
-                            vk_id = search_candidates(user_id=user_id)
-
-                            vk_name, vk_surname, vk_link = get_person_info(person_id=vk_id)
-
-                            send_message(user_id=user_id, message=f"{vk_name} {vk_surname}\n{vk_link}")
-
-                            for index, value in enumerate(get_candidate_photo_id(vk_id)):
-                                send_photo(user_id=user_id, candidate_id=vk_id,
-                                           photo_id=get_candidate_photo_id(vk_id)[index])
-
-                            if not select_users(user_id):
-                                insert_users(user_id=user_id)
-
-                            insert_users_seen_candidates(user_id=user_id, candidate_id=vk_id)
-
-                            send_message(user_id=user_id,
-                                         message=f"Желаете продолжить? Тогда смело вводите 'да'.\n\n"
-                                                 f"Если Вы уже подобрали себе пару - введите 'нет'.")
-
-                        elif text.lower() == 'нет':
-                            send_message(user_id=user_id, message=f"Рад был Вам помочь! Надеюсь, я был полезен! :)\n\n"
-                                                                  f"Если захотите повторить - введите 'начать'!")
-
-                        else:
-                            # работа с БД, чтобы бот не реагировал на сообщения, запрашивающие у юзера доп. инфу
-                            if not select_users(user_id=user_id):  # отправляем подсказку для нового юзера только 1 раз!
                                 send_message(user_id=user_id,
-                                             message=f"Введите \'начать\', чтобы я смог начать поиск партнера.")
+                                             message=f"Рад Вас приветствовать, {get_person_info(person_id=user_id)[0]}!"
+                                                     f"\n\nЯ чат-бот VKinder и сейчас я постараюсь подобрать Вам пару."
+                                                     f"\n\nК сожалению, я только учусь, поэтому мне очень важно, "
+                                                     f"чтобы Вы правильно отвечали на мои вопросы."
+                                                     f"\n\nВведите 'да', если Вы готовы насладиться первым кандидатом.")
+
+                            elif text.lower() == 'да':
+
+                                vk_id = search_candidates(user_id=user_id)
+
+                                vk_name, vk_surname, vk_link = get_person_info(person_id=vk_id)
+
+                                send_message(user_id=user_id, message=f"{vk_name} {vk_surname}\n{vk_link}")
+
+                                for index, value in enumerate(get_candidate_photo_id(vk_id)):
+                                    send_photo(user_id=user_id, candidate_id=vk_id,
+                                               photo_id=get_candidate_photo_id(vk_id)[index])
+
+                                if not select_users(user_id):
+                                    insert_users(user_id=user_id)
+
+                                insert_users_seen_candidates(user_id=user_id, candidate_id=vk_id)
+
+                                send_message(user_id=user_id,
+                                             message=f"Желаете продолжить? Тогда смело вводите 'да'.\n\n"
+                                                     f"Если Вы уже подобрали себе пару - введите 'нет'.")
+
+                            elif text.lower() == 'нет':
+                                send_message(user_id=user_id, message=f"Рад был Вам помочь! Надеюсь, я был полезен! :)"
+                                                                      f"\n\nЗахотите повторить - введите 'начать'!")
+
+                            else:
+                                # Работа с БД, чтобы бот не реагировал на сообщения, запрашивающие у юзера доп. инфу
+                                if not select_users(user_id=user_id):  # отправляем подсказку новому юзера только 1 раз!
+                                    send_message(user_id=user_id,
+                                                 message=f"Введите \'начать\', чтобы я смог начать поиск партнера.")
+
+                        except Exception:
+                            send_message(user_id=user_id,
+                                         message=f"Ошибка доступа. Похоже, что возникли проблемы с токеном.")
 
         ts: int = resp['ts']  # обновление номера ts последнего обновления
 

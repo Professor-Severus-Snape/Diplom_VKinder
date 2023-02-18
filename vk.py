@@ -11,13 +11,17 @@ def call_server(token: str = vk_group_token, version: str = api_version) -> tupl
     url: str = 'https://api.vk.com/method/messages.getLongPollServer'
     params: dict = {'access_token': token, 'v': version}
 
-    response: dict = requests.get(url, params=params).json()
+    try:
+        response: dict = requests.get(url, params=params).json()
 
-    server: str = response['response']['server']
-    key: str = response['response']['key']
-    ts: int = response['response']['ts']
+        server: str = response['response']['server']
+        key: str = response['response']['key']
+        ts: int = response['response']['ts']
 
-    return server, key, ts
+        return server, key, ts
+
+    except KeyError:
+        return ()
 
 
 def send_message(user_id: int, message: str, token: str = vk_group_token, version: str = api_version) -> None:
@@ -67,7 +71,7 @@ def get_person_info(person_id: int, token: str = access_token, version: str = ap
         return first_name, last_name, vk_link
 
     except KeyError:
-        send_message(user_id=person_id, message=f"Ошибка доступа.")
+        return ()
 
 
 def ask_sex(user_id: int) -> int:
@@ -141,10 +145,10 @@ def get_sex(user_id: int, token: str = vk_group_token, version: str = api_versio
         else:
             find_sex: int = ask_sex(user_id=user_id)
 
-        return find_sex
-
     except KeyError:
-        send_message(user_id=user_id, message=f"Ошибка доступа.")
+        find_sex: int = ask_sex(user_id=user_id)
+
+    return find_sex
 
 
 def ask_age(user_id: int) -> int:
@@ -231,7 +235,8 @@ def get_age(user_id: int, token: str = vk_group_token, version: str = api_versio
             return age
 
     except KeyError:
-        send_message(user_id=user_id, message=f"Ошибка доступа.")
+        age: int = ask_age(user_id=user_id)
+        return age
 
 
 def ask_city(user_id: int, token: str = access_token, version: str = api_version) -> int:
@@ -276,19 +281,23 @@ def ask_city(user_id: int, token: str = access_token, version: str = api_version
 
                         response: dict = requests.get(url, params=params).json()
 
-                        list_cities: list = response['response']['items']
+                        try:
+                            list_cities: list = response['response']['items']
 
-                        if not list_cities:  # []
-                            send_message(user_id=user_id,
-                                         message=f"К сожалению, я не смог отыскать город с таким именем.\n"
-                                                 f"Возможно Вы ошиблись при вводе или ищете город не в России.\n"
-                                                 f"Попробуйте снова.")
+                            if not list_cities:  # []
+                                send_message(user_id=user_id,
+                                             message=f"К сожалению, я не смог отыскать город с таким именем.\n"
+                                                     f"Возможно Вы ошиблись при вводе или ищете город не в России.\n"
+                                                     f"Попробуйте снова.")
 
-                        else:
-                            for city_info in list_cities:
-                                if city_info['title'].lower() == city_input.lower():
-                                    city_id: int = city_info['id']
-                                    return city_id
+                            else:
+                                for city_info in list_cities:
+                                    if city_info['title'].lower() == city_input.lower():
+                                        city_id: int = city_info['id']
+                                        return city_id
+
+                        except KeyError:
+                            return 0
 
         ts: int = resp['ts']
 
@@ -314,10 +323,10 @@ def get_city(user_id: int, token: str = vk_group_token, version: str = api_versi
         else:
             city_id: int = ask_city(user_id=user_id)
 
-        return city_id
-
     except KeyError:
-        send_message(user_id=user_id, message=f"Ошибка доступа.")
+        city_id: int = ask_city(user_id=user_id)
+
+    return city_id
 
 
 def search_candidates(user_id: int, token: str = access_token, version: str = api_version) -> int:
@@ -342,17 +351,17 @@ def search_candidates(user_id: int, token: str = access_token, version: str = ap
 
         response: dict = requests.get(url, params=params).json()
 
-        if response:
-            candidate = response['response']['items'][0]  # словарь с информацией о кандидате
+        try:
+            info = response['response']['items']
+            if info[0]:
+                candidate = info[0]  # словарь с информацией о кандидате
 
-            if not candidate['is_closed'] or candidate['is_closed'] and candidate['can_access_closed']:
-                if not select_users_seen_candidates(user_id=user_id, candidate_id=candidate['id']):
-                    # print(candidate['id'])
-                    return candidate['id']
+                if not candidate['is_closed'] or candidate['is_closed'] and candidate['can_access_closed']:
+                    if not select_users_seen_candidates(user_id=user_id, candidate_id=candidate['id']):
+                        return candidate['id']
 
-        else:
-            send_message(user_id=user_id, message=f"Ошибка доступа.")
-            break  # условие выхода из бесконечного цикла
+        except KeyError:
+            return 0
 
 
 def get_candidate_photo_id(candidate_id: int, token: str = access_token, version: str = api_version) -> list:
@@ -371,7 +380,7 @@ def get_candidate_photo_id(candidate_id: int, token: str = access_token, version
 
     response: dict = requests.get(url, params=params).json()
 
-    if response:
+    try:
         all_photos: list = response['response']['items']  # список словарей (каждый словарь - информация об одной фотке)
 
         all_photos_id: list = [item['id'] for item in all_photos]  # список из id всех фоток кандидата
@@ -400,3 +409,6 @@ def get_candidate_photo_id(candidate_id: int, token: str = access_token, version
                             break
 
         return best_photos_id
+
+    except KeyError:
+        return []
