@@ -15,7 +15,7 @@ def main() -> None:
     except Exception:
         return print("Проблемы с токеном. Проверьте актуальность токена сообщества.")
 
-    create_tables()  # создаем все таблицы для работы с БД (если их ещё нет)
+    create_tables()
 
     while True:
         resp: dict = requests.get(f'https://{server}?act=a_check&key={key}&ts={ts}&wait=90&mode=2&version=2').json()
@@ -25,7 +25,7 @@ def main() -> None:
 
         except KeyError:  # если здесь возбуждается исключение KeyError, то параметр key устарел, и нужно получить новый
             server, key, ts = call_server()
-            continue  # переходим на следующую итерацию цикла, чтобы сделать повторный запрос
+            continue
 
         if updates:  # проверка, были ли обновления
             for element in updates:
@@ -34,11 +34,11 @@ def main() -> None:
                 if action_code == 4:  # цифра 4 - это новое сообщение
 
                     # научим программу отличать исходящие сообщения от входящих:
-                    flags = []  # массив, где мы будем хранить слагаемые
-                    flag = element[2]  # флаг сообщения
-                    for number in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 65536]:  # идём циклом по возможным слагаемым
-                        if flag & number:  # проверяем, является ли число слагаемым с помощью побитового И
-                            flags.append(number)  # если является, добавляем его в массив
+                    flags = []
+                    flag = element[2]
+                    for number in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 65536]:
+                        if flag & number:
+                            flags.append(number)
                     if 2 not in flags:  # если это не исходящее сообщение, то:
 
                         # NB! Если юзер не в сети, то его id начинается с минуса - берём модуль на всякий случай!
@@ -83,7 +83,7 @@ def main() -> None:
 
                             else:
                                 # Работа с БД, чтобы бот не реагировал на сообщения, запрашивающие у юзера доп. инфу
-                                if not select_users(user_id=user_id):  # отправляем подсказку новому юзера только 1 раз!
+                                if not select_users(user_id=user_id):  # отправляем подсказку новому юзеру только 1 раз!
                                     send_message(user_id=user_id,
                                                  message=f"Введите \'начать\', чтобы я смог начать поиск партнера.")
 

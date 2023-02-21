@@ -11,9 +11,9 @@ def call_server(token: str = vk_group_token, version: str = api_version) -> tupl
     url: str = 'https://api.vk.com/method/messages.getLongPollServer'
     params: dict = {'access_token': token, 'v': version}
 
-    try:
-        response: dict = requests.get(url, params=params).json()
+    response: dict = requests.get(url, params=params).json()
 
+    try:
         server: str = response['response']['server']
         key: str = response['response']['key']
         ts: int = response['response']['ts']
